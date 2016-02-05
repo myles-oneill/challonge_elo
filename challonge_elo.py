@@ -10,33 +10,40 @@ import trueskill
 def clean_up(name):
     name = name.lower()
 
-    # remove the ones that include the classes
+    # remove the ones that include the classes or #number
     name = re.sub(r'\s*\(.*', '', name)
+    name = re.sub(r'#.*', '', name)
 
     return name
 
-br = mechanize.Browser()
-start_url = 'http://{}.challonge.com/'.format(config.subdomain)
-br.open(start_url)
-
 tournaments = []
 
-print 'Getting all tournament ids'
+br = mechanize.Browser()
 
-done = False
-while not done:
-    done = True
+start_urls = ['http://{}.challonge.com/'.format(config.subdomain), 'http://challonge.com/users/showdowngg']
 
-    for link in br.links():
-        if 'hearthstone' in link.text.lower():
-            tournaments.append(link.url.replace(start_url, ''))
+for start_url in start_urls:
+    br.open(start_url)
 
-        if link.text == 'Next ›':
-            next_button = link
-            done = False
-            break
+    print 'Getting all tournament ids for ' + start_url
 
-    br.follow_link(next_button)
+    done = False
+    while not done:
+        done = True
+
+        for link in br.links():
+            if 'hearthstone' in link.text.lower():
+                if start_url == start_urls[0]:
+                    tournaments.append(config.subdomain + '-' + link.url.replace(start_url, ''))
+                else:
+                    tournaments.append(link.url.replace('http://challonge.com/', ''))
+
+            if link.text == 'Next ›':
+                next_button = link
+                done = False
+                break
+
+        br.follow_link(next_button)
 
 challonge.set_credentials(config.user, config.api_key)
 
@@ -45,10 +52,8 @@ players = {}
 for tournament in tournaments:
     print 'Getting matches from tournament: ' + tournament
 
-    tournament_id = config.subdomain + '-' + tournament
-
-    matches = challonge.matches.index(tournament_id)
-    participants = challonge.participants.index(tournament_id)
+    matches = challonge.matches.index(tournament)
+    participants = challonge.participants.index(tournament)
 
     tag = {}
 
@@ -56,10 +61,15 @@ for tournament in tournaments:
         name = clean_up(p['name'])
 
         # Gotchas
-        if name == 'blo0dninja2':
-            name = 'bloodninja'
-        elif name == 'justinlaw':
-            name = 'justinatlaw'
+        corrections = {
+            'blo0dninja2': 'bloodninja',
+            'justinlaw': 'justinatlaw',
+            'swerve': 'djswerve',
+            'ravels': 'gravels'
+        }
+
+        if name in corrections:
+            name = corrections[name]
 
         tag[p['id']] = name
 
