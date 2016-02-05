@@ -31,7 +31,6 @@ class Player:
 
         return name
 
-
     def __init__(self, participant):
         self.rating = trueskill.Rating()
         self.last_played = participant['created-at']
@@ -43,7 +42,10 @@ tournaments = []
 
 br = mechanize.Browser()
 
-start_urls = ['http://{}.challonge.com/'.format(config.subdomain), 'http://challonge.com/users/showdowngg']
+start_urls = [
+    'http://{}.challonge.com/'.format(config.subdomain),
+    'http://challonge.com/users/showdowngg'
+]
 
 for start_url in start_urls:
     br.open(start_url)
@@ -92,10 +94,10 @@ for tournament in tournaments:
         tag[p['id']] = name
 
     for match in matches:
-        if not 'winner-id' in match:
+        if 'winner-id' not in match:
             continue
 
-        if not match['winner-id'] in tag:
+        if match['winner-id'] not in tag:
             continue
 
         winner = tag[match['winner-id']]
