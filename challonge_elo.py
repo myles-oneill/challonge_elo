@@ -2,19 +2,42 @@
 # -*- coding: utf-8 -*-
 import challonge
 import config
+from datetime import datetime, timedelta
 import mechanize
+import pytz
 import re
 import trueskill
 
 
-def clean_up(name):
-    name = name.lower()
+class Player:
+    def clean_up(self, name):
+        name = name.lower()
 
-    # remove the ones that include the classes or #number
-    name = re.sub(r'\s*\(.*', '', name)
-    name = re.sub(r'#.*', '', name)
+        # remove the ones that include the classes or #number
+        name = re.sub(r'\s*\(.*', '', name)
+        name = re.sub(r'#.*', '', name)
 
-    return name
+        # Gotchas
+        corrections = {
+            'blo0dninja2': 'bloodninja',
+            'justinlaw': 'justinatlaw',
+            'swerve': 'djswerve',
+            'ravels': 'gravels',
+            'azunin': 'azurin'
+        }
+
+        if name in corrections:
+            name = corrections[name]
+
+        return name
+
+
+    def __init__(self, participant):
+        self.rating = trueskill.Rating()
+        self.last_played = participant['created-at']
+
+        self.name = self.clean_up(participant['name'])
+
 
 tournaments = []
 
@@ -58,24 +81,13 @@ for tournament in tournaments:
     tag = {}
 
     for p in participants:
-        name = clean_up(p['name'])
-
-        # Gotchas
-        corrections = {
-            'blo0dninja2': 'bloodninja',
-            'justinlaw': 'justinatlaw',
-            'swerve': 'djswerve',
-            'ravels': 'gravels'
-        }
-
-        if name in corrections:
-            name = corrections[name]
-
-        tag[p['id']] = name
+        new_player = Player(p)
+        name = new_player.name
 
         if name not in players:
-            players[name] = trueskill.Rating()
+            players[name] = new_player
 
+        tag[p['id']] = name
 
     for match in matches:
         if not 'winner-id' in match:
@@ -89,12 +101,21 @@ for tournament in tournaments:
         two = tag[match['player2-id']]
 
         if winner == one:
-            players[one], players[two] = trueskill.rate_1vs1(players[one], players[two])
+            players[one].rating, players[two].rating = trueskill.rate_1vs1(players[one].rating, players[two].rating)
         else:
-            players[two], players[one] = trueskill.rate_1vs1(players[two], players[one])
+            players[two].rating, players[one].rating = trueskill.rate_1vs1(players[two].rating, players[one].rating)
 
 print
 print '=== Results ==='
 
-for i, player in enumerate(sorted(players, key=players.get, reverse=True)):
-    print '{}. {} ({:.2f}, {:.2f})'.format(i+1, player, players[player].mu, players[player].sigma)
+pacific_time = pytz.timezone('US/Pacific')
+today = datetime.now(pacific_time)
+SIX_WEEKS = timedelta(days=6*7)
+
+i = 1
+for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
+    player = players[player]
+
+    if today - player.last_played < SIX_WEEKS:
+        print '{}. {} ({:.2f}, {:.2f})'.format(i, player.name, player.rating.mu, player.rating.sigma)
+        i += 1
