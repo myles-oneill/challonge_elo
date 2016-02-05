@@ -86,6 +86,8 @@ for tournament in tournaments:
 
         if name not in players:
             players[name] = new_player
+        else:
+            players[name].last_played = max(players[name].last_played, new_player.last_played)
 
         tag[p['id']] = name
 
