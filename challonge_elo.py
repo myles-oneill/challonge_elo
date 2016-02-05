@@ -7,11 +7,12 @@ import json
 import mechanize
 import os
 import re
-import time
 import trueskill
+
 
 CACHE = 'cache'
 DATE_STR = '%Y-%m-%d'
+
 
 class Player:
     def clean_up(self, name):
@@ -73,13 +74,17 @@ def get_all_tournaments(start_urls):
     return tournaments
 
 
+def str2date(s):
+    return datetime.strptime(s, DATE_STR)
+
+
 def json_serial(obj):
     if isinstance(obj, datetime):
         serial = obj.strftime(DATE_STR)
         return serial
     raise TypeError('Type not serializable')
 
-tournaments = get_all_tournaments([
+tournament_ids = get_all_tournaments([
     'http://{}.challonge.com/'.format(config.subdomain),
     'http://challonge.com/users/' + config.subdomain
 ])
@@ -94,25 +99,34 @@ else:
 challonge.set_credentials(config.user, config.api_key)
 
 players = {}
+tournaments = {}
 
-# Try to tests matches in order (approximately)
-for tournament in tournaments[::-1]:
+for tournament_id in tournament_ids:
 
-    if tournament not in cached_tournaments:
-        print tournament + ': Getting matches'
+    if tournament_id not in cached_tournaments:
+        print tournament_id + ': Getting matches'
 
-        matches = challonge.matches.index(tournament)
-        participants = challonge.participants.index(tournament)
+        matches = challonge.matches.index(tournament_id)
+        participants = challonge.participants.index(tournament_id)
 
-        with open(os.path.join(CACHE, tournament), 'w') as f:
+        with open(os.path.join(CACHE, tournament_id), 'w') as f:
             json.dump({'matches': matches, 'participants': participants}, f, default=json_serial)
     else:
-        print tournament + ': in cache, skipping'
+        print tournament_id + ': in cache, skipping'
 
-    with open(os.path.join(CACHE, tournament)) as f:
+    with open(os.path.join(CACHE, tournament_id)) as f:
         raw = json.load(f)
-        matches = raw['matches']
-        participants = raw['participants']
+
+        tournaments[tournament_id] = {
+                'matches': raw['matches'],
+                'participants': raw['participants']
+        }
+
+
+for id in sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at'])):
+    tournament = tournaments[id]
+    matches = tournament['matches']
+    participants = tournament['participants']
 
     tag = {}
 
@@ -153,8 +167,6 @@ i = 1
 for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
     player = players[player]
 
-    last_played = datetime.strptime(player.last_played, DATE_STR)
-
-    if today - last_played < SIX_WEEKS:
+    if today - str2date(player.last_played) < SIX_WEEKS:
         print '{}. {} ({:.2f}, {:.2f})'.format(i, player.name, player.rating.mu, player.rating.sigma)
         i += 1
