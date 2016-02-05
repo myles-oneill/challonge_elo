@@ -74,7 +74,8 @@ challonge.set_credentials(config.user, config.api_key)
 
 players = {}
 
-for tournament in tournaments:
+# Try to tests matches in order (approximately)
+for tournament in tournaments[::-1]:
     print 'Getting matches from tournament: ' + tournament
 
     matches = challonge.matches.index(tournament)
