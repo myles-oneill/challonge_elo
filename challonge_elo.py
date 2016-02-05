@@ -3,11 +3,15 @@
 import challonge
 import config
 from datetime import datetime, timedelta
+import json
 import mechanize
-import pytz
+import os
 import re
+import time
 import trueskill
 
+CACHE = 'cache'
+DATE_STR = '%Y-%m-%d'
 
 class Player:
     def clean_up(self, name):
@@ -38,37 +42,54 @@ class Player:
         self.name = self.clean_up(participant['name'])
 
 
-tournaments = []
+def get_all_tournaments(start_urls):
+    tournaments = []
 
-br = mechanize.Browser()
+    br = mechanize.Browser()
 
-start_urls = [
+    for start_url in start_urls:
+        br.open(start_url)
+
+        print 'Getting all tournament ids for ' + start_url
+
+        done = False
+        while not done:
+            done = True
+
+            for link in br.links():
+                if 'hearthstone' in link.text.lower():
+                    if start_url == start_urls[0]:
+                        tournaments.append(config.subdomain + '-' + link.url.replace(start_url, ''))
+                    else:
+                        tournaments.append(link.url.replace('http://challonge.com/', ''))
+
+                if link.text == 'Next ›':
+                    next_button = link
+                    done = False
+                    break
+
+            br.follow_link(next_button)
+
+    return tournaments
+
+
+def json_serial(obj):
+    if isinstance(obj, datetime):
+        serial = obj.strftime(DATE_STR)
+        return serial
+    raise TypeError('Type not serializable')
+
+tournaments = get_all_tournaments([
     'http://{}.challonge.com/'.format(config.subdomain),
-    'http://challonge.com/users/showdowngg'
-]
+    'http://challonge.com/users/' + config.subdomain
+])
 
-for start_url in start_urls:
-    br.open(start_url)
+cached_tournaments = set()
 
-    print 'Getting all tournament ids for ' + start_url
-
-    done = False
-    while not done:
-        done = True
-
-        for link in br.links():
-            if 'hearthstone' in link.text.lower():
-                if start_url == start_urls[0]:
-                    tournaments.append(config.subdomain + '-' + link.url.replace(start_url, ''))
-                else:
-                    tournaments.append(link.url.replace('http://challonge.com/', ''))
-
-            if link.text == 'Next ›':
-                next_button = link
-                done = False
-                break
-
-        br.follow_link(next_button)
+if not os.path.exists(CACHE):
+    os.makedirs(CACHE)
+else:
+    cached_tournaments = set(os.listdir(CACHE))
 
 challonge.set_credentials(config.user, config.api_key)
 
@@ -76,10 +97,22 @@ players = {}
 
 # Try to tests matches in order (approximately)
 for tournament in tournaments[::-1]:
-    print 'Getting matches from tournament: ' + tournament
 
-    matches = challonge.matches.index(tournament)
-    participants = challonge.participants.index(tournament)
+    if tournament not in cached_tournaments:
+        print tournament + ': Getting matches'
+
+        matches = challonge.matches.index(tournament)
+        participants = challonge.participants.index(tournament)
+
+        with open(os.path.join(CACHE, tournament), 'w') as f:
+            json.dump({'matches': matches, 'participants': participants}, f, default=json_serial)
+    else:
+        print tournament + ': in cache, skipping'
+
+    with open(os.path.join(CACHE, tournament)) as f:
+        raw = json.load(f)
+        matches = raw['matches']
+        participants = raw['participants']
 
     tag = {}
 
@@ -113,14 +146,15 @@ for tournament in tournaments[::-1]:
 print
 print '=== Results ==='
 
-pacific_time = pytz.timezone('US/Pacific')
-today = datetime.now(pacific_time)
+today = datetime.today()
 SIX_WEEKS = timedelta(days=6*7)
 
 i = 1
 for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
     player = players[player]
 
-    if today - player.last_played < SIX_WEEKS:
+    last_played = datetime.strptime(player.last_played, DATE_STR)
+
+    if today - last_played < SIX_WEEKS:
         print '{}. {} ({:.2f}, {:.2f})'.format(i, player.name, player.rating.mu, player.rating.sigma)
         i += 1
