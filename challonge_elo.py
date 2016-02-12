@@ -24,17 +24,19 @@ class Player:
 
         # Gotchas
         corrections = {
-            'blo0dninja2': 'bloodninja',
+            'bloodninja': 'blo0dninja2',
             'justinlaw': 'justinatlaw',
             'swerve': 'djswerve',
             'ravels': 'gravels',
+            'ltigre': 'elteegrey',
             'azunin': 'azurin'
         }
 
         if name in corrections:
             name = corrections[name]
 
-        return name
+        # Capitalize the first letter in the name
+        return name[0].upper() + name[1:]
 
     def __init__(self, participant):
         self.rating = trueskill.Rating()
@@ -69,7 +71,9 @@ def get_all_tournaments(start_urls):
                     done = False
                     break
 
-            br.follow_link(next_button)
+            if not done:
+                print next_button
+                br.follow_link(next_button)
 
     return tournaments
 
@@ -89,6 +93,8 @@ tournament_ids = get_all_tournaments([
     'http://challonge.com/users/' + config.subdomain
 ])
 
+tournament_ids.append('idnlvvlz')
+
 cached_tournaments = set()
 
 if not os.path.exists(CACHE):
@@ -102,7 +108,6 @@ players = {}
 tournaments = {}
 
 for tournament_id in tournament_ids:
-
     if tournament_id not in cached_tournaments:
         print tournament_id + ': Getting matches'
 
@@ -168,5 +173,5 @@ for player in sorted(players, key=lambda name: players[name].rating, reverse=Tru
     player = players[player]
 
     if today - str2date(player.last_played) < SIX_WEEKS:
-        print '{}. {} ({:.2f}, {:.2f})'.format(i, player.name, player.rating.mu, player.rating.sigma)
+        print '{}. {} ({:.2f})'.format(i, player.name, player.rating.mu)
         i += 1
