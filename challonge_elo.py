@@ -9,7 +9,6 @@ import os
 import re
 import trueskill
 
-
 CACHE = 'cache'
 DATE_STR = '%Y-%m-%d'
 
@@ -72,7 +71,6 @@ def get_all_tournaments(start_urls):
                     break
 
             if not done:
-                print next_button
                 br.follow_link(next_button)
 
     return tournaments
