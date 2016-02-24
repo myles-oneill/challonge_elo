@@ -33,6 +33,14 @@ table {
   font-size: 20px;
 }
 
+.red {
+  color: #EC7600;
+}
+
+.green {
+  color: #99ff88;
+}
+
 th, td {
   border: 1px solid #222222;
   padding: 8px;

@@ -43,8 +43,18 @@ class Player:
         # Capitalize the first letter in the name
         return name[0].upper() + name[1:]
 
+    def old_rating(self):
+        if self.previous_rating is not None:
+            return self.previous_rating
+        else:
+            return self.rating
+
     def __init__(self, participant):
         self.rating = trueskill.Rating()
+        self.previous_rating = None
+        self.rank = -1
+        self.previous_rank = -1
+        self.new = False
         self.last_played = participant['created-at']
 
         self.name = self.clean_up(participant['name'])
@@ -143,7 +153,7 @@ for tournament_id in cached_tournaments:
         }
 
 
-for id in sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at'])):
+for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at']))):
     tournament = tournaments[id]
     matches = tournament['matches']
     participants = tournament['participants']
@@ -156,6 +166,9 @@ for id in sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0
 
         if name not in players:
             players[name] = new_player
+
+            if n == len(tournaments) - 1:
+                players[name].new = True
         else:
             players[name].last_played = max(players[name].last_played, new_player.last_played)
 
@@ -177,12 +190,34 @@ for id in sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0
         else:
             players[two].rating, players[one].rating = trueskill.rate_1vs1(players[two].rating, players[one].rating)
 
+    if n == len(tournaments) - 2:
+        for name in players:
+            player = players[name]
+            player.previous_rating = player.rating
+
+
 if args.verbose:
     print
     print '=== Results ==='
 
 today = datetime.today()
 SIX_WEEKS = timedelta(days=6*7)
+
+i = 1
+for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
+    player = players[player]
+
+    if today - str2date(player.last_played) < SIX_WEEKS:
+        player.rank = i
+        i += 1
+
+i = 1
+for player in sorted(players, key=lambda name: players[name].old_rating(), reverse=True):
+    player = players[player]
+
+    if today - str2date(player.last_played) < SIX_WEEKS and not player.new:
+        player.previous_rank = i
+        i += 1
 
 if not args.html:
     i = 1

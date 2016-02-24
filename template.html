@@ -9,6 +9,7 @@
 <div id='title'>
 <h1>Showdown Hearthstone Max Power Ranking</h1>
 <h2>Last Updated: 3/1/16</h2>
+</div>
 
 <table class='table-striped'>
   <thead>
@@ -25,12 +26,32 @@
   <% player = players[player] %>
   % if today - str2date(player.last_played) < six_weeks:
   <tr>
-    <td>${i}</td>
+    <td>${player.rank}</td>
     <td class='tag'>${player.name}</td>
-    <td></td>
+    <td>
+      % if player.previous_rank != -1:
+      <% rank_diff = player.previous_rank - player.rank %>
+      % if rank_diff < 0:
+      <span class='red'>
+        ${rank_diff}
+      </span>
+      % elif rank_diff > 0:
+        <span class='green'>
+      +${rank_diff}
+      </span>
+      % else:
+      <span class='red'>
+      -
+    </span>
+      % endif
+      % else:
+      <span class='green'>
+      +
+      </span>
+      % endif
+    </td>
     <td>${'{:.2f}'.format(player.rating.mu)}</td>
   </tr>
-  <% i += 1 %>
   % endif
   %endfor
 </table>
