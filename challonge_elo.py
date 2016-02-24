@@ -171,6 +171,7 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
                 players[name].new = True
         else:
             players[name].last_played = max(players[name].last_played, new_player.last_played)
+            last_updated = new_player.last_played
 
         tag[p['id']] = name
 
@@ -195,7 +196,6 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
             player = players[name]
             player.previous_rating = player.rating
 
-
 if args.verbose:
     print
     print '=== Results ==='
@@ -203,31 +203,27 @@ if args.verbose:
 today = datetime.today()
 SIX_WEEKS = timedelta(days=6*7)
 
+active_players = []
+
 i = 1
 for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
     player = players[player]
 
     if today - str2date(player.last_played) < SIX_WEEKS:
         player.rank = i
+        active_players.append(player)
         i += 1
 
 i = 1
-for player in sorted(players, key=lambda name: players[name].old_rating(), reverse=True):
-    player = players[player]
-
-    if today - str2date(player.last_played) < SIX_WEEKS and not player.new:
+for player in sorted(active_players, key=lambda p: p.old_rating(), reverse=True):
+    if not player.new:
         player.previous_rank = i
         i += 1
 
 if not args.html:
-    i = 1
-    for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
-        player = players[player]
-
-        if today - str2date(player.last_played) < SIX_WEEKS:
-            print '{}. {} ({:.2f})'.format(i, player.name, player.rating.mu)
-            i += 1
+    for player in active_players:
+        print '{}. {} ({:.2f})'.format(player.rank, player.name, player.rating.mu)
 else:
     template = Template(filename='template.html')
     with open('maxpr.html', 'w') as output:
-        output.write(template.render(players=players, today=today, six_weeks=SIX_WEEKS, str2date=str2date))
+        output.write(template.render(players=active_players, last_updated=last_updated))
