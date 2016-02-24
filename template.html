@@ -1,0 +1,43 @@
+<html>
+<head>
+<title>Showdown Hearthstone Max Power Ranking</title>
+<link rel='shortcut icon' href='hs.ico' />
+<link rel='stylesheet' href='style.css' />
+</head>
+<body>
+
+<div id='title'>
+<h1>Showdown Hearthstone Max Power Ranking</h1>
+<h2>Last Updated: 3/1/16</h2>
+
+<table class='table-striped'>
+  <thead>
+  <tr id='heading'>
+    <th>#</th>
+    <th class='tag'>Tag</th>
+    <th>&Delta;</th>
+    <th>Elo</th>
+  </tr>
+  </thead>
+
+  <% i = 1 %>
+  % for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
+  <% player = players[player] %>
+  % if today - str2date(player.last_played) < six_weeks:
+  <tr>
+    <td>${i}</td>
+    <td class='tag'>${player.name}</td>
+    <td></td>
+    <td>${'{:.2f}'.format(player.rating.mu)}</td>
+  </tr>
+  <% i += 1 %>
+  % endif
+  %endfor
+</table>
+
+<p>Source for how rankings are calculated can be found <a href="https://github.com/mtimkovich/challonge_elo">here</a>.
+
+<p>Created by Max Timkovich
+
+</body>
+</html>

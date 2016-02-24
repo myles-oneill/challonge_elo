@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import argparse
 import challonge
 import config
 from datetime import datetime, timedelta
 import json
+from mako.template import Template
 import mechanize
 import os
 import re
@@ -12,6 +14,10 @@ import trueskill
 CACHE = 'cache'
 DATE_STR = '%Y-%m-%d'
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--html', action='store_true', help='Output MaxPR html file')
+parser.add_argument('-v', '--verbose', action='store_true', help='Print debug messages')
+args = parser.parse_args()
 
 class Player:
     def clean_up(self, name):
@@ -51,7 +57,8 @@ def get_all_tournaments(start_urls):
     for start_url in start_urls:
         br.open(start_url)
 
-        print 'Getting all tournament ids for ' + start_url
+        if args.verbose:
+            print 'Getting all tournament ids for ' + start_url
 
         done = False
         while not done:
@@ -106,7 +113,8 @@ tournaments = {}
 
 for tournament_id in tournament_ids:
     if tournament_id not in cached_tournaments:
-        print tournament_id + ': Getting matches'
+        if args.verbose:
+            print tournament_id + ': Getting matches'
 
         matches = challonge.matches.index(tournament_id)
         participants = challonge.participants.index(tournament_id)
@@ -114,7 +122,8 @@ for tournament_id in tournament_ids:
         with open(os.path.join(CACHE, tournament_id), 'w') as f:
             json.dump({'matches': matches, 'participants': participants}, f, default=json_serial)
     else:
-        print tournament_id + ': in cache, skipping'
+        if args.verbose:
+            print tournament_id + ': in cache, skipping'
 
     # with open(os.path.join(CACHE, tournament_id)) as f:
     #     raw = json.load(f)
@@ -129,8 +138,8 @@ for tournament_id in cached_tournaments:
         raw = json.load(f)
 
         tournaments[tournament_id] = {
-                'matches': raw['matches'],
-                'participants': raw['participants']
+            'matches': raw['matches'],
+            'participants': raw['participants']
         }
 
 
@@ -168,17 +177,22 @@ for id in sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0
         else:
             players[two].rating, players[one].rating = trueskill.rate_1vs1(players[two].rating, players[one].rating)
 
-print
-print '=== Results ==='
+if args.verbose:
+    print
+    print '=== Results ==='
 
 today = datetime.today()
 SIX_WEEKS = timedelta(days=6*7)
 
-i = 1
-for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
-    player = players[player]
+if not args.html:
+    i = 1
+    for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
+        player = players[player]
 
-    if today - str2date(player.last_played) < SIX_WEEKS:
-        # print '{}. {} ({:.2f})'.format(i, player.name, player.rating.mu)
-        print '<li>{} ({:.2f})</li>'.format(player.name, player.rating.mu)
-        i += 1
+        if today - str2date(player.last_played) < SIX_WEEKS:
+            print '{}. {} ({:.2f})'.format(i, player.name, player.rating.mu)
+            i += 1
+else:
+    template = Template(filename='template.html')
+    with open('maxpr.html', 'w') as output:
+        output.write(template.render(players=players, today=today, six_weeks=SIX_WEEKS, str2date=str2date))
