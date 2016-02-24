@@ -46,7 +46,6 @@ class Player:
 
 def get_all_tournaments(start_urls):
     tournaments = []
-
     br = mechanize.Browser()
 
     for start_url in start_urls:
@@ -88,7 +87,7 @@ def json_serial(obj):
 
 tournament_ids = get_all_tournaments([
     'http://{}.challonge.com/'.format(config.subdomain),
-    'http://challonge.com/users/' + config.subdomain
+    # 'http://challonge.com/users/' + config.subdomain
 ])
 
 tournament_ids.append('idnlvvlz')
@@ -117,6 +116,15 @@ for tournament_id in tournament_ids:
     else:
         print tournament_id + ': in cache, skipping'
 
+    # with open(os.path.join(CACHE, tournament_id)) as f:
+    #     raw = json.load(f)
+
+    #     tournaments[tournament_id] = {
+    #             'matches': raw['matches'],
+    #             'participants': raw['participants']
+    #     }
+
+for tournament_id in cached_tournaments:
     with open(os.path.join(CACHE, tournament_id)) as f:
         raw = json.load(f)
 
@@ -171,5 +179,6 @@ for player in sorted(players, key=lambda name: players[name].rating, reverse=Tru
     player = players[player]
 
     if today - str2date(player.last_played) < SIX_WEEKS:
-        print '{}. {} ({:.2f})'.format(i, player.name, player.rating.mu)
+        # print '{}. {} ({:.2f})'.format(i, player.name, player.rating.mu)
+        print '<li>{} ({:.2f})</li>'.format(player.name, player.rating.mu)
         i += 1
