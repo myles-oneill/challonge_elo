@@ -152,6 +152,7 @@ for tournament_id in cached_tournaments:
             'participants': raw['participants']
         }
 
+last_updated = None
 
 for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at']))):
     tournament = tournaments[id]
@@ -195,6 +196,9 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
         for name in players:
             player = players[name]
             player.previous_rating = player.rating
+
+    if n == len(tournaments) - 1 and last_updated is None:
+        last_updated = matches[0]['created-at']
 
 if args.verbose:
     print
