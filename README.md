@@ -9,6 +9,7 @@ With some tweaking it should be able to be used with other tournaments as well.
 - [pychallonge](https://github.com/russ-/pychallonge)
 - [TrueSkill](http://trueskill.org)
 - [mechanize](https://pypi.python.org/pypi/mechanize/)
+- [Mako](http://www.makotemplates.org/)
 
 ## Config
 
