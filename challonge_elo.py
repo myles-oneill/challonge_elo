@@ -200,16 +200,14 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
     if n == len(tournaments) - 1 and last_updated is None:
         last_updated = matches[0]['created-at']
 
-today = datetime.today()
-SIX_WEEKS = timedelta(days=6*7)
-
 active_players = []
 
 i = 1
 for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
     player = players[player]
 
-    if today - str2date(player.last_played) < SIX_WEEKS:
+    # Remove inactive players after 6 weeks
+    if datetime.today() - str2date(player.last_played) < timedelta(weeks=6):
         player.rank = i
         active_players.append(player)
         i += 1
