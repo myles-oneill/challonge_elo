@@ -200,10 +200,6 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
     if n == len(tournaments) - 1 and last_updated is None:
         last_updated = matches[0]['created-at']
 
-if args.verbose:
-    print
-    print '=== Results ==='
-
 today = datetime.today()
 SIX_WEEKS = timedelta(days=6*7)
 
@@ -225,6 +221,10 @@ for player in sorted(active_players, key=lambda p: p.old_rating(), reverse=True)
         i += 1
 
 if not args.html:
+    if args.verbose:
+        print
+        print '=== Results ==='
+
     for player in active_players:
         print '{}. {} ({:.2f})'.format(player.rank, player.name, player.rating.mu)
 else:
