@@ -11,7 +11,7 @@ import os
 import re
 import trueskill
 
-CACHE = 'cache'
+CACHE = 'cache-melee'
 DATE_STR = '%Y-%m-%d'
 
 parser = argparse.ArgumentParser()
@@ -21,33 +21,7 @@ args = parser.parse_args()
 
 class Player:
     def clean_up(self, name):
-        name = name.lower()
-
-        # remove the ones that include the classes or #number
-        name = re.sub(r'\s*\(.*', '', name)
-        name = re.sub(r'#.*', '', name)
-
-        # Gotchas
-        corrections = {
-            'bloodninja': 'blo0dninja2',
-            'justinlaw': 'justinatlaw',
-            'swerve': 'djswerve',
-            'ravels': 'gravels',
-            'ltigre': 'elteegrey',
-            'azunin': 'azurin'
-        }
-
-        if name in corrections:
-            name = corrections[name]
-
-        # Capitalize the first letter in the name
-        return name[0].upper() + name[1:]
-
-    def old_rating(self):
-        if self.previous_rating is not None:
-            return self.previous_rating
-        else:
-            return self.rating
+        return name
 
     def __init__(self, participant):
         self.rating = trueskill.Rating()
@@ -75,11 +49,9 @@ def get_all_tournaments(start_urls):
             done = True
 
             for link in br.links():
-                if 'hearthstone' in link.text.lower():
+                if 'sf game night' in link.text.lower() and 'hearthstone' not in link.text.lower():
                     if start_url == start_urls[0]:
                         tournaments.append(config.subdomain + '-' + link.url.replace(start_url, ''))
-                    else:
-                        tournaments.append(link.url.replace('http://challonge.com/', ''))
 
                 if link.text == 'Next ›':
                     next_button = link
@@ -104,10 +76,7 @@ def json_serial(obj):
 
 tournament_ids = get_all_tournaments([
     'http://{}.challonge.com/'.format(config.subdomain),
-    # 'http://challonge.com/users/' + config.subdomain
 ])
-
-tournament_ids.append('idnlvvlz')
 
 cached_tournaments = set()
 
@@ -154,7 +123,8 @@ for tournament_id in cached_tournaments:
 
 last_updated = None
 
-for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at']))):
+# for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at']))):
+for n, id in enumerate(sorted(tournaments, key=lambda x: tournaments[x]['matches'])):
     tournament = tournaments[id]
     matches = tournament['matches']
     participants = tournament['participants']
@@ -192,40 +162,18 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
         else:
             players[two].rating, players[one].rating = trueskill.rate_1vs1(players[two].rating, players[one].rating)
 
-    if n == len(tournaments) - 2:
-        for name in players:
-            player = players[name]
-            player.previous_rating = player.rating
-
     if n == len(tournaments) - 1 and last_updated is None:
         last_updated = matches[0]['created-at']
-
-active_players = []
-
-i = 1
-for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
-    player = players[player]
-
-    # Remove inactive players after 6 weeks
-    if datetime.today() - str2date(player.last_played) < timedelta(weeks=6):
-        player.rank = i
-        active_players.append(player)
-        i += 1
-
-i = 1
-for player in sorted(active_players, key=lambda p: p.old_rating(), reverse=True):
-    if not player.new:
-        player.previous_rank = i
-        i += 1
 
 if not args.html:
     if args.verbose:
         print
         print '=== Results ==='
 
-    for player in active_players:
-        print '{}. {} ({:.2f})'.format(player.rank, player.name, player.rating.mu)
+    for i, player in enumerate(sorted(players, key=lambda p: players[p].rating, reverse=True)):
+        player = players[player]
+        print '{}. {} ({:.2f})'.format(i+1, player.name.encode('utf-8'), player.rating.mu)
 else:
     template = Template(filename='template.html')
     with open('maxpr.html', 'w') as output:
-        output.write(template.render(players=active_players, last_updated=last_updated))
+        output.write(template.render(players=players))
