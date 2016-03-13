@@ -21,9 +21,10 @@ args = parser.parse_args()
 
 class Player:
     def clean_up(self, name):
+        name = re.sub(r'^.*\s*[\|\.]\s*', '', name)
         return name
 
-    def __init__(self, participant):
+    def __init__(self, participant, id):
         self.rating = trueskill.Rating()
         self.previous_rating = None
         self.rank = -1
@@ -32,6 +33,7 @@ class Player:
         self.last_played = participant['created-at']
 
         self.name = self.clean_up(participant['name'])
+        self.id = id
 
 
 def get_all_tournaments(start_urls):
@@ -116,15 +118,16 @@ for tournament_id in cached_tournaments:
     with open(os.path.join(CACHE, tournament_id)) as f:
         raw = json.load(f)
 
-        tournaments[tournament_id] = {
-            'matches': raw['matches'],
-            'participants': raw['participants']
-        }
+        # Ignore empty results and doubles
+        if raw['matches'] and int(tournament_id.replace(config.subdomain+'-SFGameNight', '')) not in [63, 78]:
+            tournaments[tournament_id] = {
+                'matches': raw['matches'],
+                'participants': raw['participants']
+            }
 
 last_updated = None
 
-# for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at']))):
-for n, id in enumerate(sorted(tournaments, key=lambda x: tournaments[x]['matches'])):
+for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]['matches'][0]['created-at']))):
     tournament = tournaments[id]
     matches = tournament['matches']
     participants = tournament['participants']
@@ -132,7 +135,7 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: tournaments[x]['matches
     tag = {}
 
     for p in participants:
-        new_player = Player(p)
+        new_player = Player(p, id)
         name = new_player.name
 
         if name not in players:
@@ -172,7 +175,7 @@ if not args.html:
 
     for i, player in enumerate(sorted(players, key=lambda p: players[p].rating, reverse=True)):
         player = players[player]
-        print '{}. {} ({:.2f})'.format(i+1, player.name.encode('utf-8'), player.rating.mu)
+        print '{}. {} ({}) ({:.2f})'.format(i+1, player.name.encode('utf-8'), player.id, player.rating.mu)
 else:
     template = Template(filename='template.html')
     with open('maxpr.html', 'w') as output:
