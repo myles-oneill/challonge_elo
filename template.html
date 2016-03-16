@@ -8,7 +8,6 @@
 
 <div id='title'>
 <h1>Showdown Hearthstone Max Power Ranking</h1>
-<h2>Last Updated: ${last_updated}</h2>
 </div>
 
 <table class='table-striped'>
@@ -16,36 +15,14 @@
   <tr id='heading'>
     <th>#</th>
     <th class='tag'>Tag</th>
-    <th>&Delta;</th>
     <th>Elo</th>
   </tr>
   </thead>
 
-  <% i = 1 %>
   % for player in players:
   <tr>
     <td>${player.rank}</td>
     <td class='tag'>${player.name}</td>
-    <td>
-      % if player.previous_rank != -1:
-        <% rank_diff = player.previous_rank - player.rank %>
-        % if rank_diff < 0:
-          <span class='red'>
-            ${rank_diff}
-          </span>
-        % elif rank_diff > 0:
-          <span class='green'>
-            +${rank_diff}
-          </span>
-        % else:
-          -
-        % endif
-      % else:
-        <span class='green'>
-        +
-        </span>
-      % endif
-    </td>
     <td>${'{:.2f}'.format(player.rating.mu)}</td>
   </tr>
   %endfor

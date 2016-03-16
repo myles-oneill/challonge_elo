@@ -22,9 +22,18 @@ args = parser.parse_args()
 class Player:
     def clean_up(self, name):
         name = re.sub(r'^.*\s*[\|\.]\s*', '', name)
+        name = re.sub(r'\(DNP\)', '', name)
+        if name.lower() == 'silentwolf':
+            name = 'Silent Wolf'
+        elif 'sdsDocMandible'.lower() in name.lower():
+            name = 'Shroomed'
+        elif 'PewPewU'.lower() in name.lower():
+            name = 'PewPewU'
+        name = name.strip()
+        name = name.encode('utf-8')
         return name
 
-    def __init__(self, participant, id):
+    def __init__(self, participant):
         self.rating = trueskill.Rating()
         self.previous_rating = None
         self.rank = -1
@@ -33,7 +42,6 @@ class Player:
         self.last_played = participant['created-at']
 
         self.name = self.clean_up(participant['name'])
-        self.id = id
 
 
 def get_all_tournaments(start_urls):
@@ -135,7 +143,7 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
     tag = {}
 
     for p in participants:
-        new_player = Player(p, id)
+        new_player = Player(p)
         name = new_player.name
 
         if name not in players:
@@ -168,15 +176,23 @@ for n, id in enumerate(sorted(tournaments, key=lambda x: str2date(tournaments[x]
     if n == len(tournaments) - 1 and last_updated is None:
         last_updated = matches[0]['created-at']
 
+player_list = []
+for i, player in enumerate(sorted(players, key=lambda p: players[p].rating, reverse=True)):
+    player = players[player]
+    player.rank = i+1
+    player_list.append(player)
+
 if not args.html:
     if args.verbose:
         print
         print '=== Results ==='
 
-    for i, player in enumerate(sorted(players, key=lambda p: players[p].rating, reverse=True)):
-        player = players[player]
-        print '{}. {} ({}) ({:.2f})'.format(i+1, player.name.encode('utf-8'), player.id, player.rating.mu)
+    for player in player_list:
+        print '{}. {} ({:.2f})'.format(player.rank, player.name, player.rating.mu)
+
+    # for i, player in enumerate(sorted(players, key=lambda p: players[p].rating, reverse=True)):
+    #     player = players[player]
+    #     print '{}. {} ({:.2f})'.format(i+1, player.name, player.rating.mu)
 else:
     template = Template(filename='template.html')
-    with open('maxpr.html', 'w') as output:
-        output.write(template.render(players=players))
+    print template.render(players=player_list)
