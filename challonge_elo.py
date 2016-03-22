@@ -15,11 +15,17 @@ CACHE = 'cache'
 DATE_STR = '%Y-%m-%d'
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--html', action='store_true', help='Output MaxPR html file')
+parser.add_argument('--html', action='store_true', help='Output to html page')
 parser.add_argument('-v', '--verbose', action='store_true', help='Print debug messages')
 args = parser.parse_args()
 
 class Player:
+    def title(self, name):
+        if len(name) == 1:
+            return name[0].upper()
+        else:
+            return name[0].upper() + name[1:]
+
     def clean_up(self, name):
         name = name.lower()
 
@@ -41,7 +47,7 @@ class Player:
             name = corrections[name]
 
         # Capitalize the first letter in the name
-        return name[0].upper() + name[1:]
+        return self.title(name)
 
     def old_rating(self):
         if self.previous_rating is not None:
@@ -75,7 +81,7 @@ def get_all_tournaments(start_urls):
             done = True
 
             for link in br.links():
-                if 'hearthstone' in link.text.lower():
+                if link.text is not None and 'hearthstone' in link.text.lower():
                     if start_url == start_urls[0]:
                         tournaments.append(config.subdomain + '-' + link.url.replace(start_url, ''))
                     else:
@@ -206,8 +212,8 @@ i = 1
 for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
     player = players[player]
 
-    # Remove inactive players after 6 weeks
-    if datetime.today() - str2date(player.last_played) < timedelta(weeks=6):
+    # Remove inactive players after 4 weeks
+    if datetime.today() - str2date(player.last_played) < timedelta(weeks=4):
         player.rank = i
         active_players.append(player)
         i += 1
@@ -227,5 +233,4 @@ if not args.html:
         print '{}. {} ({:.2f})'.format(player.rank, player.name, player.rating.mu)
 else:
     template = Template(filename='template.html')
-    with open('maxpr.html', 'w') as output:
-        output.write(template.render(players=active_players, last_updated=last_updated))
+    print template.render(players=active_players, last_updated=last_updated)
