@@ -212,8 +212,8 @@ i = 1
 for player in sorted(players, key=lambda name: players[name].rating, reverse=True):
     player = players[player]
 
-    # Remove inactive players after 4 weeks
-    if datetime.today() - str2date(player.last_played) < timedelta(weeks=4):
+    # Remove inactive players after 6 weeks
+    if datetime.today() - str2date(player.last_played) < timedelta(weeks=6):
         player.rank = i
         active_players.append(player)
         i += 1
